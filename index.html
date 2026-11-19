@@ -1,0 +1,221 @@
+// ---------- Almacenamiento ----------
+const STORAGE_KEY = "mi-agenda-escolar";
+
+function cargarDatos() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    try { return JSON.parse(raw); } catch (e) { /* si está corrupto, reinicia */ }
+  }
+  return { materias: [], tareas: [], avisos: [] };
+}
+
+function guardarDatos() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(datos));
+}
+
+let datos = cargarDatos();
+
+// ---------- Utilidades ----------
+function generarId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function formatearFecha(fechaStr) {
+  if (!fechaStr) return "";
+  const [anio, mes, dia] = fechaStr.split("-");
+  return `${dia}/${mes}/${anio}`;
+}
+
+function esVencida(fechaStr) {
+  if (!fechaStr) return false;
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const fecha = new Date(fechaStr + "T00:00:00");
+  return fecha < hoy;
+}
+
+function nombreMateria(id) {
+  const m = datos.materias.find(m => m.id === id);
+  return m ? m.nombre : "Sin materia";
+}
+
+function colorMateria(id) {
+  const m = datos.materias.find(m => m.id === id);
+  return m ? m.color : "#9ca3af";
+}
+
+// ---------- Pestañas ----------
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.tab).classList.add("active");
+  });
+});
+
+// ---------- Materias ----------
+function actualizarSelectMaterias() {
+  const select = document.getElementById("tarea-materia");
+  const actual = select.value;
+  select.innerHTML = '<option value="">Materia...</option>';
+  datos.materias.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m.id;
+    opt.textContent = m.nombre;
+    select.appendChild(opt);
+  });
+  select.value = actual;
+}
+
+function renderMaterias() {
+  const lista = document.getElementById("lista-materias");
+  lista.innerHTML = "";
+  if (datos.materias.length === 0) {
+    lista.innerHTML = '<li class="vacio">Todavía no agregas materias.</li>';
+  }
+  datos.materias.forEach(m => {
+    const li = document.createElement("li");
+    li.className = "item";
+    li.innerHTML = `
+      <span class="chip-materia">
+        <span class="chip-dot" style="background:${m.color}"></span>
+        <strong>${m.nombre}</strong>
+      </span>
+      <button class="borrar" title="Eliminar materia">🗑️</button>
+    `;
+    li.querySelector(".borrar").addEventListener("click", () => {
+      datos.materias = datos.materias.filter(x => x.id !== m.id);
+      datos.tareas = datos.tareas.filter(t => t.materiaId !== m.id);
+      guardarDatos();
+      renderTodo();
+    });
+    lista.appendChild(li);
+  });
+  actualizarSelectMaterias();
+}
+
+document.getElementById("form-materia").addEventListener("submit", e => {
+  e.preventDefault();
+  const nombre = document.getElementById("materia-nombre").value.trim();
+  const color = document.getElementById("materia-color").value;
+  if (!nombre) return;
+  datos.materias.push({ id: generarId(), nombre, color });
+  guardarDatos();
+  e.target.reset();
+  document.getElementById("materia-color").value = "#4f46e5";
+  renderMaterias();
+});
+
+// ---------- Tareas ----------
+function renderTareas() {
+  const lista = document.getElementById("lista-tareas");
+  const ocultarCompletadas = document.getElementById("ocultar-completadas").checked;
+  lista.innerHTML = "";
+
+  let tareas = [...datos.tareas].sort((a, b) => (a.fecha || "9999").localeCompare(b.fecha || "9999"));
+  if (ocultarCompletadas) tareas = tareas.filter(t => !t.completada);
+
+  if (tareas.length === 0) {
+    lista.innerHTML = '<li class="vacio">No tienes tareas pendientes. 🎉</li>';
+    return;
+  }
+
+  tareas.forEach(t => {
+    const vencida = !t.completada && esVencida(t.fecha);
+    const li = document.createElement("li");
+    li.className = "item" + (t.completada ? " completada" : "") + (vencida ? " vencida" : "");
+    li.style.borderLeftColor = t.completada ? "#9ca3af" : colorMateria(t.materiaId);
+    li.innerHTML = `
+      <div class="item-main">
+        <input type="checkbox" ${t.completada ? "checked" : ""} title="Marcar como completada">
+        <div class="item-info">
+          <strong>${t.titulo}</strong>
+          <div class="item-meta">
+            <span class="badge ${t.prioridad}">${t.prioridad === "alta" ? "Prioridad alta" : "Normal"}</span>
+            ${nombreMateria(t.materiaId)} · entrega ${formatearFecha(t.fecha)}${vencida ? " ⚠️ vencida" : ""}
+          </div>
+          ${t.notas ? `<div class="item-notas">${t.notas}</div>` : ""}
+        </div>
+      </div>
+      <button class="borrar" title="Eliminar tarea">🗑️</button>
+    `;
+    li.querySelector("input[type=checkbox]").addEventListener("change", e => {
+      t.completada = e.target.checked;
+      guardarDatos();
+      renderTareas();
+    });
+    li.querySelector(".borrar").addEventListener("click", () => {
+      datos.tareas = datos.tareas.filter(x => x.id !== t.id);
+      guardarDatos();
+      renderTareas();
+    });
+    lista.appendChild(li);
+  });
+}
+
+document.getElementById("form-tarea").addEventListener("submit", e => {
+  e.preventDefault();
+  const titulo = document.getElementById("tarea-titulo").value.trim();
+  const materiaId = document.getElementById("tarea-materia").value;
+  const fecha = document.getElementById("tarea-fecha").value;
+  const prioridad = document.getElementById("tarea-prioridad").value;
+  const notas = document.getElementById("tarea-notas").value.trim();
+  if (!titulo || !materiaId || !fecha) return;
+
+  datos.tareas.push({ id: generarId(), titulo, materiaId, fecha, prioridad, notas, completada: false });
+  guardarDatos();
+  e.target.reset();
+  renderTareas();
+});
+
+document.getElementById("ocultar-completadas").addEventListener("change", renderTareas);
+
+// ---------- Avisos ----------
+function renderAvisos() {
+  const lista = document.getElementById("lista-avisos");
+  lista.innerHTML = "";
+  const avisos = [...datos.avisos].sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+
+  if (avisos.length === 0) {
+    lista.innerHTML = '<li class="vacio">No hay avisos registrados.</li>';
+    return;
+  }
+
+  avisos.forEach(a => {
+    const li = document.createElement("li");
+    li.className = "item";
+    li.innerHTML = `
+      <div class="item-info">
+        <strong>${a.texto}</strong>
+        ${a.fecha ? `<div class="item-meta">${formatearFecha(a.fecha)}</div>` : ""}
+      </div>
+      <button class="borrar" title="Eliminar aviso">🗑️</button>
+    `;
+    li.querySelector(".borrar").addEventListener("click", () => {
+      datos.avisos = datos.avisos.filter(x => x.id !== a.id);
+      guardarDatos();
+      renderAvisos();
+    });
+    lista.appendChild(li);
+  });
+}
+
+document.getElementById("form-aviso").addEventListener("submit", e => {
+  e.preventDefault();
+  const texto = document.getElementById("aviso-texto").value.trim();
+  const fecha = document.getElementById("aviso-fecha").value;
+  if (!texto) return;
+  datos.avisos.push({ id: generarId(), texto, fecha });
+  guardarDatos();
+  e.target.reset();
+  renderAvisos();
+});
+
+// ---------- Inicio ----------
+function renderTodo() {
+  renderMaterias();
+  renderTareas();
+  renderAvisos();
+}
+
+renderTodo();
