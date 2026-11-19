@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Agenda Escolar</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>📚 Mi Agenda Escolar</h1>
+    <p class="subtitle">Tareas, fechas de entrega y avisos, todo en un solo lugar</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="tareas">Tareas</button>
+    <button class="tab-btn" data-tab="materias">Materias</button>
+    <button class="tab-btn" data-tab="avisos">Avisos</button>
+  </nav>
+
+  <main>
+    <!-- TAREAS -->
+    <section id="tareas" class="tab-content active">
+      <h2>Nueva tarea</h2>
+      <form id="form-tarea">
+        <div class="form-row">
+          <input type="text" id="tarea-titulo" placeholder="Nombre de la tarea" required>
+          <select id="tarea-materia" required>
+            <option value="">Materia...</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <input type="date" id="tarea-fecha" required>
+          <select id="tarea-prioridad">
+            <option value="normal">Prioridad normal</option>
+            <option value="alta">Prioridad alta</option>
+          </select>
+        </div>
+        <textarea id="tarea-notas" placeholder="Notas (opcional)"></textarea>
+        <button type="submit">Agregar tarea</button>
+      </form>
+
+      <h2>Pendientes</h2>
+      <div class="filtro">
+        <label><input type="checkbox" id="ocultar-completadas"> Ocultar completadas</label>
+      </div>
+      <ul id="lista-tareas" class="lista"></ul>
+    </section>
+
+    <!-- MATERIAS -->
+    <section id="materias" class="tab-content">
+      <h2>Mis materias</h2>
+      <form id="form-materia">
+        <input type="text" id="materia-nombre" placeholder="Nombre de la materia" required>
+        <input type="color" id="materia-color" value="#4f46e5" title="Color de la materia">
+        <button type="submit">Agregar materia</button>
+      </form>
+      <ul id="lista-materias" class="lista"></ul>
+    </section>
+
+    <!-- AVISOS -->
+    <section id="avisos" class="tab-content">
+      <h2>Avisos importantes</h2>
+      <form id="form-aviso">
+        <input type="text" id="aviso-texto" placeholder="Escribe el aviso..." required>
+        <input type="date" id="aviso-fecha">
+        <button type="submit">Agregar aviso</button>
+      </form>
+      <ul id="lista-avisos" class="lista"></ul>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
